@@ -1,0 +1,1083 @@
+-- A "subquery" is a SELECT statement that is inside another SELECT statement;
+-- Subqueries can also be placed anywhere a tablename can be placed;
+-- Subqueries used in this way must be given a name
+SELECT * FROM (
+    SELECT id FROM basket_a
+) AS t; -- the AS is optional
+ id 
+----
+  1
+  1
+  2
+  3
+   
+  4
+   
+(7 rows)
+
+/*
+The above query is equivalent to
+
+SELECT * FROM basket_a;
+*/
+-- JOINs combine tables "horizontally" whereas set operations combine tables "vertically"
+-- column types must match between the two select statements,
+-- but the final column names will be the column names of the first query
+-- UNION ALL concatenates the results of two queries
+-- UNION also removes duplicates
+SELECT * FROM (
+    SELECT fruit_a FROM basket_a
+    UNION ALL
+    SELECT fruit_b FROM basket_b
+) t;
+  fruit_a   
+------------
+ Apple
+ Apple
+ Orange
+ Banana
+ Cucumber
+ 
+ 
+ Apple
+ Apple
+ Orange
+ Orange
+ Watermelon
+ Pear
+ 
+ 
+(15 rows)
+
+-- UNION removes duplicates, so changing the columns can change the number of rows
+-- UNION ALL: changing the columns will never change the number of rows
+SELECT * FROM (
+    SELECT fruit_a FROM basket_a
+    UNION
+    SELECT fruit_b FROM basket_b
+) t;
+  fruit_a   
+------------
+ 
+ Pear
+ Apple
+ Orange
+ Watermelon
+ Banana
+ Cucumber
+(7 rows)
+
+SELECT * FROM (
+    SELECT id, fruit_a FROM basket_a
+    UNION
+    SELECT id, fruit_b FROM basket_b
+) t;
+ id |  fruit_a   
+----+------------
+    | 
+  2 | Apple
+  3 | Orange
+    | Pear
+  2 | Orange
+  3 | Banana
+  4 | Orange
+  1 | Apple
+  6 | 
+  4 | 
+  5 | Watermelon
+    | Cucumber
+(12 rows)
+
+SELECT * FROM (
+    SELECT fruit_a FROM basket_a
+    WHERE id < 3
+    UNION ALL
+    SELECT fruit_b FROM basket_b
+    WHERE id > 3 AND fruit_b ILIKE '%a%'
+) t;
+  fruit_a   
+------------
+ Apple
+ Apple
+ Orange
+ Orange
+ Watermelon
+(5 rows)
+
+SELECT * FROM (
+    SELECT DISTINCT id FROM basket_a
+    UNION ALL
+    SELECT id FROM basket_b
+) t;
+ id 
+----
+   
+  3
+  4
+  2
+  1
+  1
+  2
+  3
+  4
+  5
+   
+  6
+   
+(13 rows)
+
+SELECT * FROM (
+    SELECT DISTINCT id FROM basket_a
+    UNION ALL
+    SELECT DISTINCT id FROM basket_b
+) t;
+ id 
+----
+   
+  3
+  4
+  2
+  1
+   
+  3
+  5
+  4
+  6
+  2
+  1
+(12 rows)
+
+SELECT * FROM (
+    SELECT id FROM basket_a
+    UNION ALL
+    SELECT id FROM basket_b
+) t;
+ id 
+----
+  1
+  1
+  2
+  3
+   
+  4
+   
+  1
+  2
+  3
+  4
+  5
+   
+  6
+   
+(15 rows)
+
+SELECT * FROM (
+    SELECT id FROM basket_a
+    UNION ALL
+    SELECT id FROM basket_b
+) t;
+ id 
+----
+  1
+  1
+  2
+  3
+   
+  4
+   
+  1
+  2
+  3
+  4
+  5
+   
+  6
+   
+(15 rows)
+
+SELECT * FROM (
+    SELECT id FROM basket_a
+    WHERE
+        fruit_a LIKE '%a%'
+    UNION ALL
+    SELECT id FROM basket_b
+    WHERE
+        fruit_b LIKE '%A%'
+) t;
+ id 
+----
+  2
+  3
+  1
+  2
+(4 rows)
+
+SELECT 'Apple' UNION SELECT 'Orange';
+ ?column? 
+----------
+ Apple
+ Orange
+(2 rows)
+
+-- INTERSECT ALL returns all rows that are in both queries
+-- INTERSECT also removes duplicates
+SELECT * FROM (
+    SELECT fruit_a FROM basket_a
+    INTERSECT
+    SELECT fruit_b FROM basket_b
+) t;
+ fruit_a 
+---------
+ 
+ Orange
+ Apple
+(3 rows)
+
+SELECT * FROM (
+    SELECT id, fruit_a FROM basket_a
+    INTERSECT
+    SELECT id, fruit_b FROM basket_b
+) t;
+ id | fruit_a 
+----+---------
+    | 
+  1 | Apple
+(2 rows)
+
+SELECT * FROM (
+    SELECT fruit_a FROM basket_a
+    INTERSECT ALL
+    SELECT fruit_b FROM basket_b
+) t;
+ fruit_a 
+---------
+ 
+ 
+ Orange
+ Apple
+ Apple
+(5 rows)
+
+SELECT * FROM (
+    SELECT fruit_a FROM basket_a
+    INTERSECT
+    SELECT fruit_a FROM basket_a
+    WHERE id < 5
+) t;
+ fruit_a 
+---------
+ 
+ Banana
+ Orange
+ Apple
+(4 rows)
+
+-- EXCEPT ALL returns all rows that are in the first query but not the second
+-- EXCEPT also removes duplicates
+SELECT *
+FROM (
+    SELECT fruit_a FROM basket_a
+    EXCEPT ALL
+    SELECT fruit_b FROM basket_b
+) t;
+ fruit_a  
+----------
+ Banana
+ Cucumber
+(2 rows)
+
+SELECT *
+FROM (
+    SELECT fruit_a FROM basket_a
+    EXCEPT
+    SELECT fruit_b FROM basket_b
+    WHERE fruit_b IS NOT NULL
+) t;
+ fruit_a  
+----------
+ 
+ Banana
+ Cucumber
+(3 rows)
+
+SELECT *
+FROM (
+    SELECT fruit_b FROM basket_b
+    EXCEPT
+    SELECT fruit_a FROM basket_a
+    WHERE fruit_a IS NOT NULL
+) t;
+  fruit_b   
+------------
+ 
+ Watermelon
+ Pear
+(3 rows)
+
+SELECT * FROM (
+    SELECT fruit_b FROM basket_b
+    EXCEPT
+    SELECT NULL
+) t;
+  fruit_b   
+------------
+ Orange
+ Watermelon
+ Pear
+ Apple
+(4 rows)
+
+-- The IN operator lets you compare to a "list"
+-- See: <https://www.postgresql.org/docs/15/functions-comparisons.html#FUNCTIONS-COMPARISONS-IN-SCALAR>
+/*
+A IN (a, b, c)
+is syntactic sugar for
+A = a OR A = b OR A = c
+*/
+SELECT * FROM basket_a WHERE id      IN (3, 4);
+ id | fruit_a 
+----+---------
+  3 | Banana
+  4 | 
+(2 rows)
+
+SELECT * FROM basket_a WHERE fruit_a IN ('Apple', 'Orange');
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+(3 rows)
+
+SELECT * FROM basket_a WHERE fruit_a IN (NULL);
+ id | fruit_a 
+----+---------
+(0 rows)
+
+SELECT * FROM basket_a WHERE id      NOT IN (3, 4);
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+(3 rows)
+
+SELECT * FROM basket_a WHERE fruit_a NOT IN ('Apple', 'Orange');
+ id | fruit_a  
+----+----------
+  3 | Banana
+    | Cucumber
+(2 rows)
+
+SELECT * FROM basket_a WHERE fruit_a NOT IN (NULL);
+ id | fruit_a 
+----+---------
+(0 rows)
+
+SELECT * FROM basket_a WHERE NOT id      IN (3, 4);
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+(3 rows)
+
+SELECT * FROM basket_a WHERE NOT fruit_a IN ('Apple', 'Orange');
+ id | fruit_a  
+----+----------
+  3 | Banana
+    | Cucumber
+(2 rows)
+
+SELECT * FROM basket_a WHERE NOT fruit_a IN (NULL);
+ id | fruit_a 
+----+---------
+(0 rows)
+
+-- A common use-case for subqueries is to populate the "list" to the right of the IN operator
+-- These subqueries can only have a single column and do not require a name
+SELECT * FROM basket_a WHERE id      IN (SELECT  3      UNION SELECT 4       );
+ id | fruit_a 
+----+---------
+  3 | Banana
+  4 | 
+(2 rows)
+
+SELECT * FROM basket_a WHERE fruit_a IN (SELECT 'Apple' UNION SELECT 'Orange');
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+(3 rows)
+
+SELECT *                 FROM basket_a WHERE fruit_a IN (SELECT fruit_b  FROM basket_b);
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+(3 rows)
+
+SELECT *                 FROM basket_a WHERE fruit_a IN (SELECT DISTINCT fruit_b  FROM basket_b);
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+(3 rows)
+
+-- adding the DISTINCT keyword into the subquery to the right of an IN clause will never change the results
+SELECT *                 FROM basket_a WHERE id      IN (SELECT id       FROM basket_b);
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+  3 | Banana
+  4 | 
+(5 rows)
+
+SELECT *           FROM basket_a WHERE id      IN (SELECT id       FROM basket_b);
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+  3 | Banana
+  4 | 
+(5 rows)
+
+SELECT *  FROM basket_a WHERE id      IN (SELECT id       FROM basket_b);
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+  3 | Banana
+  4 | 
+(5 rows)
+
+-- We've already seen that the INNER JOIN is syntactic sugar over the cross join plus a condition;
+-- that is, the following two statements are equivalent:
+--
+--     SELECT * FROM a JOIN b ON (condition);
+--     SELECT * FROM a,b WHERE condition;
+--
+-- Outer joins are syntactic sugar for INNER JOIN plus a set operation;
+-- The left outer join given by
+--
+--     SELECT * FROM a LEFT JOIN b ON (condition);
+--
+-- is equivalent to
+--
+--     SELECT * FROM a JOIN b ON (condition)
+--     UNION ALL
+--     (
+--     SELECT a.*,NULL,NULL,NULL,... FROM a         -- there should be one NULL for each column in b
+--     EXCEPT ALL
+--     SELECT a.*,NULL,NULL,NULL,... FROM a JOIN b ON (condition)
+--     );
+--
+-- when `condition` is an equality of the form `a.c1=b.c2`, then the following is also equivalent:
+--
+--     SELECT * FROM a JOIN b ON (a.c1 = b.c2)
+--     UNION ALL
+--     SELECT * FROM a WHERE a.c1 NOT IN (SELECT b.c2 FROM b);
+--
+SELECT *
+FROM basket_a
+LEFT JOIN basket_b USING (id);
+ id | fruit_a  | fruit_b 
+----+----------+---------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+(7 rows)
+
+SELECT *
+FROM basket_a
+LEFT JOIN basket_b USING (id);
+ id | fruit_a  | fruit_b 
+----+----------+---------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+(7 rows)
+
+SELECT *
+FROM basket_a
+LEFT JOIN basket_b USING (id);
+ id | fruit_a  | fruit_b 
+----+----------+---------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+(7 rows)
+
+SELECT *
+FROM basket_a
+LEFT JOIN basket_b USING (id)
+WHERE
+    fruit_b LIKE '%a%';
+ id | fruit_a | fruit_b 
+----+---------+---------
+  3 | Banana  | Orange
+  4 |         | Orange
+(2 rows)
+
+SELECT *
+FROM basket_a
+LEFT JOIN basket_b USING (id)
+WHERE
+    id > 1;
+ id | fruit_a | fruit_b 
+----+---------+---------
+  2 | Orange  | Apple
+  3 | Banana  | Orange
+  4 |         | Orange
+(3 rows)
+
+SELECT *
+FROM basket_a
+LEFT JOIN basket_b ON (fruit_a = fruit_b);
+ id | fruit_a  | id | fruit_b 
+----+----------+----+---------
+  1 | Apple    |  2 | Apple
+  1 | Apple    |  1 | Apple
+  1 | Apple    |  2 | Apple
+  1 | Apple    |  1 | Apple
+  2 | Orange   |  4 | Orange
+  2 | Orange   |  3 | Orange
+  3 | Banana   |    | 
+    | Cucumber |    | 
+  4 |          |    | 
+    |          |    | 
+(10 rows)
+
+SELECT *
+FROM basket_a
+LEFT JOIN basket_b ON (fruit_a = fruit_b AND basket_a.id = basket_b.id);
+ id | fruit_a  | id | fruit_b 
+----+----------+----+---------
+  1 | Apple    |  1 | Apple
+  1 | Apple    |  1 | Apple
+  2 | Orange   |    | 
+  3 | Banana   |    | 
+    | Cucumber |    | 
+  4 |          |    | 
+    |          |    | 
+(7 rows)
+
+SELECT *
+FROM basket_a
+LEFT JOIN basket_b ON (fruit_a = fruit_b OR basket_a.id = basket_b.id);
+ id | fruit_a  | id | fruit_b 
+----+----------+----+---------
+  1 | Apple    |  1 | Apple
+  1 | Apple    |  2 | Apple
+  1 | Apple    |  1 | Apple
+  1 | Apple    |  2 | Apple
+  2 | Orange   |  2 | Apple
+  2 | Orange   |  3 | Orange
+  2 | Orange   |  4 | Orange
+  3 | Banana   |  3 | Orange
+    | Cucumber |    | 
+  4 |          |  4 | Orange
+    |          |    | 
+(11 rows)
+
+SELECT *
+FROM basket_a
+LEFT JOIN basket_b ON (basket_a.id < basket_b.id);
+ id | fruit_a  | id |  fruit_b   
+----+----------+----+------------
+  1 | Apple    |  2 | Apple
+  1 | Apple    |  3 | Orange
+  1 | Apple    |  4 | Orange
+  1 | Apple    |  5 | Watermelon
+  1 | Apple    |  6 | 
+  1 | Apple    |  2 | Apple
+  1 | Apple    |  3 | Orange
+  1 | Apple    |  4 | Orange
+  1 | Apple    |  5 | Watermelon
+  1 | Apple    |  6 | 
+  2 | Orange   |  3 | Orange
+  2 | Orange   |  4 | Orange
+  2 | Orange   |  5 | Watermelon
+  2 | Orange   |  6 | 
+  3 | Banana   |  4 | Orange
+  3 | Banana   |  5 | Watermelon
+  3 | Banana   |  6 | 
+    | Cucumber |    | 
+  4 |          |  5 | Watermelon
+  4 |          |  6 | 
+    |          |    | 
+(21 rows)
+
+-- A RIGHT JOIN B is equivalent to B LEFT JOIN A
+SELECT *
+FROM basket_a
+RIGHT JOIN basket_b USING (id);
+ id | fruit_a |  fruit_b   
+----+---------+------------
+  1 | Apple   | Apple
+  1 | Apple   | Apple
+  2 | Orange  | Apple
+  3 | Banana  | Orange
+  4 |         | Orange
+  5 |         | Watermelon
+    |         | Pear
+  6 |         | 
+    |         | 
+(9 rows)
+
+-- A FULL JOIN is like a "right join plus a left join"
+SELECT *
+FROM basket_a
+FULL JOIN basket_b USING (id);
+ id | fruit_a  |  fruit_b   
+----+----------+------------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+    |          | 
+    |          | Pear
+  5 |          | Watermelon
+  6 |          | 
+(11 rows)
+
+-- The LEFT, RIGHT, and FULL JOINs are all examples of OUTER JOINs.
+-- The OUTER keyword can be added without changing the meaning.
+SELECT *
+FROM basket_a
+FULL OUTER JOIN basket_b USING (id);
+ id | fruit_a  |  fruit_b   
+----+----------+------------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+    |          | 
+    |          | Pear
+  5 |          | Watermelon
+  6 |          | 
+(11 rows)
+
+SELECT *
+FROM basket_a
+LEFT OUTER JOIN basket_b USING (id);
+ id | fruit_a  | fruit_b 
+----+----------+---------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+(7 rows)
+
+SELECT *
+FROM basket_a
+RIGHT OUTER JOIN basket_b USING (id);
+ id | fruit_a |  fruit_b   
+----+---------+------------
+  1 | Apple   | Apple
+  1 | Apple   | Apple
+  2 | Orange  | Apple
+  3 | Banana  | Orange
+  4 |         | Orange
+  5 |         | Watermelon
+    |         | Pear
+  6 |         | 
+    |         | 
+(9 rows)
+
+-- The "natural" join is syntactic sugar over the USING clause:
+-- it is equivalent to using the USING clause over all columns with the same name;
+-- The natural join is not a separate type of join, and can be combined with INNER/LEFT/RIGHT joins
+SELECT * FROM basket_a NATURAL JOIN basket_b;
+ id | fruit_a | fruit_b 
+----+---------+---------
+  1 | Apple   | Apple
+  1 | Apple   | Apple
+  2 | Orange  | Apple
+  3 | Banana  | Orange
+  4 |         | Orange
+(5 rows)
+
+SELECT * FROM basket_a NATURAL LEFT JOIN basket_b;
+ id | fruit_a  | fruit_b 
+----+----------+---------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+(7 rows)
+
+SELECT * FROM basket_a NATURAL LEFT OUTER JOIN basket_b;
+ id | fruit_a  | fruit_b 
+----+----------+---------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+(7 rows)
+
+SELECT * FROM basket_a NATURAL RIGHT JOIN basket_b;
+ id | fruit_a |  fruit_b   
+----+---------+------------
+  1 | Apple   | Apple
+  1 | Apple   | Apple
+  2 | Orange  | Apple
+  3 | Banana  | Orange
+  4 |         | Orange
+  5 |         | Watermelon
+    |         | Pear
+  6 |         | 
+    |         | 
+(9 rows)
+
+SELECT * FROM basket_a NATURAL RIGHT OUTER JOIN basket_b;
+ id | fruit_a |  fruit_b   
+----+---------+------------
+  1 | Apple   | Apple
+  1 | Apple   | Apple
+  2 | Orange  | Apple
+  3 | Banana  | Orange
+  4 |         | Orange
+  5 |         | Watermelon
+    |         | Pear
+  6 |         | 
+    |         | 
+(9 rows)
+
+SELECT * FROM basket_a NATURAL FULL JOIN basket_b;
+ id | fruit_a  |  fruit_b   
+----+----------+------------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+    |          | 
+    |          | Pear
+  5 |          | Watermelon
+  6 |          | 
+(11 rows)
+
+SELECT * FROM basket_a NATURAL FULL OUTER JOIN basket_b;
+ id | fruit_a  |  fruit_b   
+----+----------+------------
+  1 | Apple    | Apple
+  1 | Apple    | Apple
+  2 | Orange   | Apple
+  3 | Banana   | Orange
+    | Cucumber | 
+  4 |          | Orange
+    |          | 
+    |          | 
+    |          | Pear
+  5 |          | Watermelon
+  6 |          | 
+(11 rows)
+
+SELECT sum(DISTINCT id) FROM basket_a NATURAL RIGHT JOIN basket_b;
+ sum 
+-----
+  21
+(1 row)
+
+-- outer joins can be chained together,
+-- and the same table can be used multiple times
+SELECT *
+FROM basket_a a1
+LEFT JOIN basket_a a2 USING (id)
+LEFT JOIN basket_a a3 USING (id);
+ id | fruit_a  | fruit_a | fruit_a 
+----+----------+---------+---------
+  1 | Apple    | Apple   | Apple
+  1 | Apple    | Apple   | Apple
+  1 | Apple    | Apple   | Apple
+  1 | Apple    | Apple   | Apple
+  1 | Apple    | Apple   | Apple
+  1 | Apple    | Apple   | Apple
+  1 | Apple    | Apple   | Apple
+  1 | Apple    | Apple   | Apple
+  2 | Orange   | Orange  | Orange
+  3 | Banana   | Banana  | Banana
+    | Cucumber |         | 
+  4 |          |         | 
+    |          |         | 
+(13 rows)
+
+SELECT *
+FROM basket_b b1
+LEFT JOIN basket_b b2 USING (id)
+LEFT JOIN basket_b b3 USING (id);
+ id |  fruit_b   |  fruit_b   |  fruit_b   
+----+------------+------------+------------
+  1 | Apple      | Apple      | Apple
+  2 | Apple      | Apple      | Apple
+  3 | Orange     | Orange     | Orange
+  4 | Orange     | Orange     | Orange
+  5 | Watermelon | Watermelon | Watermelon
+    | Pear       |            | 
+  6 |            |            | 
+    |            |            | 
+(8 rows)
+
+-- OUTER JOIN order is not commutative
+SELECT *
+FROM basket_a a
+LEFT JOIN basket_b b1 USING (id)
+LEFT JOIN basket_b b2 USING (id);
+ id | fruit_a  | fruit_b | fruit_b 
+----+----------+---------+---------
+  1 | Apple    | Apple   | Apple
+  1 | Apple    | Apple   | Apple
+  2 | Orange   | Apple   | Apple
+  3 | Banana   | Orange  | Orange
+    | Cucumber |         | 
+  4 |          | Orange  | Orange
+    |          |         | 
+(7 rows)
+
+SELECT *
+FROM basket_b b1
+LEFT JOIN basket_a a USING (id)
+LEFT JOIN basket_b b2 USING (id);
+ id |  fruit_b   | fruit_a |  fruit_b   
+----+------------+---------+------------
+  1 | Apple      | Apple   | Apple
+  1 | Apple      | Apple   | Apple
+  2 | Apple      | Orange  | Apple
+  3 | Orange     | Banana  | Orange
+  4 | Orange     |         | Orange
+  5 | Watermelon |         | Watermelon
+    | Pear       |         | 
+  6 |            |         | 
+    |            |         | 
+(9 rows)
+
+SELECT *
+FROM basket_b b1
+LEFT JOIN basket_b b2 USING (id)
+LEFT JOIN basket_a a USING (id);
+ id |  fruit_b   |  fruit_b   | fruit_a 
+----+------------+------------+---------
+  1 | Apple      | Apple      | Apple
+  1 | Apple      | Apple      | Apple
+  2 | Apple      | Apple      | Orange
+  3 | Orange     | Orange     | Banana
+  4 | Orange     | Orange     | 
+  5 | Watermelon | Watermelon | 
+    | Pear       |            | 
+  6 |            |            | 
+    |            |            | 
+(9 rows)
+
+-- when an outer join is combined with any other type of join,
+-- then the joins are no longer associative
+SELECT * FROM basket_b b1 LEFT JOIN basket_a a USING (id) JOIN basket_b b2 USING (id);
+ id |  fruit_b   | fruit_a |  fruit_b   
+----+------------+---------+------------
+  1 | Apple      | Apple   | Apple
+  1 | Apple      | Apple   | Apple
+  2 | Apple      | Orange  | Apple
+  3 | Orange     | Banana  | Orange
+  4 | Orange     |         | Orange
+  5 | Watermelon |         | Watermelon
+  6 |            |         | 
+(7 rows)
+
+SELECT * FROM (basket_b b1 LEFT JOIN basket_a a USING (id)) JOIN basket_b b2 USING (id);
+ id |  fruit_b   | fruit_a |  fruit_b   
+----+------------+---------+------------
+  1 | Apple      | Apple   | Apple
+  1 | Apple      | Apple   | Apple
+  2 | Apple      | Orange  | Apple
+  3 | Orange     | Banana  | Orange
+  4 | Orange     |         | Orange
+  5 | Watermelon |         | Watermelon
+  6 |            |         | 
+(7 rows)
+
+SELECT * FROM basket_b b1 LEFT JOIN (basket_a a JOIN basket_b b2 USING (id)) USING (id);
+ id |  fruit_b   | fruit_a | fruit_b 
+----+------------+---------+---------
+  1 | Apple      | Apple   | Apple
+  1 | Apple      | Apple   | Apple
+  2 | Apple      | Orange  | Apple
+  3 | Orange     | Banana  | Orange
+  4 | Orange     |         | Orange
+    |            |         | 
+    | Pear       |         | 
+  5 | Watermelon |         | 
+  6 |            |         | 
+(9 rows)
+
+-- As discussed above, every LEFT/RIGHT JOIN can be written in terms of a subquery;
+-- subqueries are strictly more powerful, however;
+-- if a subquery contains an aggregate function, then it cannot be re-written as a join
+SELECT * FROM (
+    SELECT sum(id) FROM basket_a
+    UNION
+    SELECT sum(id) FROM basket_b
+) t;
+ sum 
+-----
+  11
+  21
+(2 rows)
+
+SELECT * FROM (
+    SELECT sum(DISTINCT id) FROM basket_a
+    UNION
+    SELECT sum(id) FROM basket_b WHERE id < 5
+) t;
+ sum 
+-----
+  10
+(1 row)
+
+SELECT * FROM (
+    SELECT * FROM basket_a
+    UNION
+    SELECT id FROM basket_b
+) t;
+SELECT *
+FROM basket_a
+WHERE id NOT IN (SELECT sum(id) FROM basket_b WHERE fruit_b ILIKE '%a%');
+ id | fruit_a 
+----+---------
+  1 | Apple
+  1 | Apple
+  2 | Orange
+  3 | Banana
+  4 | 
+(5 rows)
+
+SELECT *
+FROM basket_b
+WHERE id IN (SELECT * FROM basket_b WHERE fruit_b ILIKE '%a%');
+SELECT *
+FROM basket_b
+WHERE id IN (SELECT * FROM basket_a WHERE id < 5);
+-- subqueries can be combined with JOINs
+SELECT *
+FROM basket_b
+WHERE id IN (
+    SELECT *
+    FROM basket_a
+    JOIN basket_b USING (id)
+    WHERE id < 5
+);
+SELECT *
+FROM basket_b, basket_a
+WHERE basket_b.id IN (
+    SELECT *
+    FROM basket_a
+    JOIN basket_b USING (id)
+    WHERE id < 5
+);
+SELECT *
+FROM basket_b
+LEFT JOIN basket_a USING (id)
+WHERE basket_b.id IN (
+    SELECT *
+    FROM basket_a
+    JOIN basket_b USING (id)
+    WHERE id < 5
+);
+SELECT *
+FROM basket_b
+RIGHT JOIN basket_a USING (id)
+WHERE basket_b.id IN (
+    SELECT *
+    FROM basket_a
+    JOIN basket_b USING (id)
+    WHERE id < 5
+);
+SELECT *
+FROM basket_b
+RIGHT JOIN basket_a USING (id)
+WHERE basket_b.id IN (SELECT id FROM basket_a WHERE id < 5);
+ id | fruit_b | fruit_a 
+----+---------+---------
+  1 | Apple   | Apple
+  1 | Apple   | Apple
+  2 | Apple   | Orange
+  3 | Orange  | Banana
+  4 | Orange  | 
+(5 rows)
+
+SELECT *
+FROM basket_b
+LEFT JOIN basket_a USING (id)
+WHERE basket_b.id IN (SELECT id FROM basket_a WHERE id < 5);
+ id | fruit_b | fruit_a 
+----+---------+---------
+  1 | Apple   | Apple
+  1 | Apple   | Apple
+  2 | Apple   | Orange
+  3 | Orange  | Banana
+  4 | Orange  | 
+(5 rows)
+
+SELECT *
+FROM basket_b
+LEFT JOIN basket_a ON (fruit_a = fruit_b)
+WHERE basket_b.id IN (SELECT id FROM basket_a WHERE id < 5);
+ id | fruit_b | id | fruit_a 
+----+---------+----+---------
+  2 | Apple   |  1 | Apple
+  1 | Apple   |  1 | Apple
+  2 | Apple   |  1 | Apple
+  1 | Apple   |  1 | Apple
+  4 | Orange  |  2 | Orange
+  3 | Orange  |  2 | Orange
+(6 rows)
+
+SELECT *
+FROM basket_b
+RIGHT JOIN basket_a ON (fruit_a = fruit_b)
+WHERE basket_b.id IN (SELECT id FROM basket_a WHERE id < 5);
+ id | fruit_b | id | fruit_a 
+----+---------+----+---------
+  2 | Apple   |  1 | Apple
+  1 | Apple   |  1 | Apple
+  2 | Apple   |  1 | Apple
+  1 | Apple   |  1 | Apple
+  4 | Orange  |  2 | Orange
+  3 | Orange  |  2 | Orange
+(6 rows)
+
